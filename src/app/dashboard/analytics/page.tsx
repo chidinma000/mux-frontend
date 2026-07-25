@@ -11,6 +11,7 @@ import { AnalyticsLoadingSkeleton } from "@/components/analytics/AnalyticsLoadin
 import { MetricsCards } from "@/components/analytics/MetricsCards";
 import { TopAssetsTable } from "@/components/analytics/TopAssetsTable";
 import { ErrorState } from "@/components/ui/ErrorState";
+import { ToastContainer, useToast } from "@/components/ui/toast";
 import { useAnalyticsMetrics } from "@/hooks/useAnalyticsMetrics";
 import { useAnalyticsTracking } from "@/hooks/useAnalyticsTracking";
 
@@ -31,11 +32,9 @@ export default function AnalyticsPage() {
 	const { toasts, addToast, dismissToast } = useToast();
 
 	function handleRangeChange(newRange: DateRange) {
-		const oldRange = range;
 		setRange(newRange);
 		track("date_range_changed", { from: newRange.from, to: newRange.to });
-		
-		// Show toast confirmation for date range change
+
 		addToast({
 			type: "info",
 			message: "Date range updated",
@@ -44,23 +43,14 @@ export default function AnalyticsPage() {
 		});
 	}
 
-	async function handleRefresh() {
-		try {
-			await refetch();
-			addToast({
-				type: "success",
-				message: "Analytics data refreshed",
-				description: "Dashboard has been updated with the latest data",
-				duration: 3000,
-			});
-		} catch (err) {
-			addToast({
-				type: "error",
-				message: "Failed to refresh data",
-				description: err instanceof Error ? err.message : "Please try again later",
-				duration: 5000,
-			});
-		}
+	function handleRefresh() {
+		refetch();
+		addToast({
+			type: "success",
+			message: "Refreshing analytics data",
+			description: "Dashboard is being updated with the latest data",
+			duration: 3000,
+		});
 	}
 
 	if (isLoading) {
