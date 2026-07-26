@@ -3,15 +3,18 @@
 import { useState } from "react";
 import { AnalyticsChart } from "@/components/analytics/AnalyticsChart";
 import { AnalyticsEmptyState } from "@/components/analytics/AnalyticsEmptyState";
+import { AnalyticsExportButton } from "@/components/analytics/AnalyticsExportButton";
 import {
 	AnalyticsHeader,
 	type DateRange,
 } from "@/components/analytics/AnalyticsHeader";
+import { AnalyticsHelpPanel } from "@/components/analytics/AnalyticsHelpPanel";
 import { AnalyticsLoadingSkeleton } from "@/components/analytics/AnalyticsLoadingSkeleton";
 import { MetricsCards } from "@/components/analytics/MetricsCards";
 import { TopAssetsTable } from "@/components/analytics/TopAssetsTable";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { ToastContainer, useToast } from "@/components/ui/toast";
+import { useAnalyticsExport } from "@/hooks/useAnalyticsExport";
 import { useAnalyticsMetrics } from "@/hooks/useAnalyticsMetrics";
 import { useAnalyticsTracking } from "@/hooks/useAnalyticsTracking";
 
@@ -30,6 +33,35 @@ export default function AnalyticsPage() {
 		useAnalyticsMetrics(range);
 	const { track } = useAnalyticsTracking("analytics");
 	const { toasts, addToast, dismissToast } = useToast();
+
+	// #453 – analytics export stub: wire the export hook to the page so
+	// developers can download transaction data as CSV or JSON.
+	const transactions = data?.topAssets
+		? // Convert TopAssetsTable rows to Transaction shape for export.
+			// When a real transactions endpoint is available, replace this with
+			// a dedicated useTransactions(range) hook.
+			data.topAssets.map((asset, i) => ({
+				id: `asset-${i}`,
+				description: asset.name,
+				date: range.to,
+				humanDate: range.to,
+				category: asset.symbol,
+				status: "completed" as const,
+				amount: asset.txCount,
+				currency: asset.symbol,
+				type: "outgoing" as const,
+			}))
+		: [];
+
+	const {
+		status: exportStatus,
+		errorMessage: exportError,
+		exportAs,
+		reset: resetExport,
+	} = useAnalyticsExport({
+		transactions,
+		filenameBase: `analytics-${range.from}_${range.to}`,
+	});
 
 	function handleRangeChange(newRange: DateRange) {
 		setRange(newRange);
@@ -62,11 +94,13 @@ export default function AnalyticsPage() {
 			<>
 				<ErrorState
 					title="Failed to load analytics"
-					description={error ?? "An unexpected error occurred. Please try again."}
+					description={
+						error ?? "An unexpected error occurred. Please try again."
+					}
 					retry={{ onRetry: handleRefresh }}
 				/>
-				<ToastContainer 
-					toasts={toasts} 
+				<ToastContainer
+					toasts={toasts}
 					onDismiss={dismissToast}
 					position="top-right"
 				/>
@@ -84,6 +118,11 @@ export default function AnalyticsPage() {
 						onClick: refetch,
 					}}
 				/>
+				<ToastContainer
+					toasts={toasts}
+					onDismiss={dismissToast}
+					position="top-right"
+				/>
 			</div>
 		);
 	}
@@ -91,11 +130,28 @@ export default function AnalyticsPage() {
 	return (
 		<>
 			<div className="space-y-6">
-				<AnalyticsHeader 
-					range={range} 
-					onRangeChange={handleRangeChange}
-					onRefresh={handleRefresh}
-				/>
+				{/* #454 – inline help panel documents analytics data sources */}
+				<AnalyticsHelpPanel />
+
+				<div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+					<AnalyticsHeader
+						range={range}
+						onRangeChange={handleRangeChange}
+						onRefresh={handleRefresh}
+					/>
+
+					{/* #453 – export control: lets developers download the current
+					    analytics snapshot as CSV or JSON */}
+					<div className="shrink-0">
+						<AnalyticsExportButton
+							status={exportStatus}
+							errorMessage={exportError}
+							onExport={exportAs}
+							onReset={resetExport}
+							rowCount={transactions.length}
+						/>
+					</div>
+				</div>
 
 				<MetricsCards metrics={data.metrics} />
 
@@ -115,9 +171,9 @@ export default function AnalyticsPage() {
 
 				<TopAssetsTable assets={data.topAssets} />
 			</div>
-			
-			<ToastContainer 
-				toasts={toasts} 
+
+			<ToastContainer
+				toasts={toasts}
 				onDismiss={dismissToast}
 				position="top-right"
 			/>
