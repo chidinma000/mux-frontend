@@ -65,7 +65,7 @@ values for testnet/mainnet-connected work.
 
 | Variable | Required | Default | Description |
 | --- | --- | --- | --- |
-| `NEXT_PUBLIC_API_URL` | No | _(none)_ | Base URL for the Mux backend API used by client-side requests, e.g. `https://api.muxprotocol.com` for mainnet or a testnet-specific URL. When unset, API routes such as `/api/auth/login` fall back to an in-repo mock so `pnpm run dev` and CI work without a live backend. |
+| `NEXT_PUBLIC_API_URL` | No | _(none)_ | Base URL for the Mux backend API used by client-side requests, e.g. `https://api.muxprotocol.com` for mainnet or a testnet-specific URL. When unset, API routes such as `/api/auth/login` and `/api/notifications` fall back to an in-repo mock so `pnpm run dev` and CI work without a live backend — **except in a production build, where those routes return `503` rather than mock data**. Setting this also switches auth into server-verified mode (see the Auth section below). |
 | `NEXT_PUBLIC_MUX_API_URL` | No | `https://api.muxprotocol.com` | Legacy alias for the API base URL, checked after `NEXT_PUBLIC_API_URL` (see `src/lib/api/config.ts`). Kept for backward compatibility with older deploys. |
 | `NEXT_PUBLIC_API_BASE` | No | _(none)_ | Third fallback in the API base URL resolution chain, checked after the two vars above. |
 | `NEXT_PUBLIC_APP_URL` | No | `http://localhost:3000` | Public-facing URL of this application, used for building absolute links (e.g. callback URLs). |
@@ -87,8 +87,12 @@ does not reflect a real environment.
 also gates some behavior: analytics/tracking hooks
 (`useAnalytics.ts`, `useAnalyticsMetrics.ts`, `useAnalyticsTracking.ts`,
 `recoveryAnalyticsTracking.ts`, `spendingLimitsTracking.ts`) log to the
-console outside of `production`, and `src/lib/env.ts` throws on missing
-*required* vars only when `NODE_ENV=production`.
+console outside of `production`; `src/lib/env.ts` throws on missing
+*required* vars only when `NODE_ENV=production`; and the mock/demo
+fallbacks in API routes and data hooks
+(`src/lib/api/runtimeMode.ts`, `useNotifications.ts`, `useRecovery.ts`)
+are disabled when `NODE_ENV=production` so mock data is never served in a
+production build.
 
 See [`docs/frontend-env-vars.md`](docs/frontend-env-vars.md) for the full
 reference, including which file reads each variable and a manual
@@ -96,12 +100,25 @@ verification checklist.
 
 ### Auth and API client behavior
 
-This repo now includes a minimal auth flow and API client support for dev mode:
-
 * `src/lib/api.js` adds request header support with `x-request-id` and automatic session refresh on `401`
-* `src/lib/session.js` persists auth state in `localStorage` and clears stale sessions gracefully
+* `src/lib/session.js` persists auth state and clears stale sessions gracefully
 * `src/hooks/useWallets.ts` adds a wallet query hook that loads wallets from `/api/wallets`
 * `src/app/api/auth/refresh/route.ts`, `/api/wallets/route.ts`, and `/api/wallets/[id]/route.ts` simulate auth-protected backend behavior for local testing
+
+**Server-verified sessions (#621).** When `NEXT_PUBLIC_API_URL` is set,
+`POST /api/auth/login` proxies to the backend and stores the backend-issued
+session token in an **HttpOnly `mux_auth_token` cookie**. The Next.js
+middleware verifies that token against `GET {backend}/auth/session` on every
+`/dashboard` request — the old client-set `mux_auth_session` marker cookie is
+only trusted in mock mode (no backend). `signOut()` calls
+`POST /api/auth/logout` to clear the HttpOnly cookie. See
+[`docs/auth-local-setup.md`](docs/auth-local-setup.md).
+
+**No silent mock success in production.** API routes that fall back to
+in-repo mock data (`/api/auth/login`, `/api/notifications`, …) do so only
+outside production. A production build with no backend configured returns
+`503` instead of mock data, so a misconfiguration is visible rather than
+masked. The shared rule lives in `src/lib/api/runtimeMode.ts`.
 
 ### Smoke tests
 
