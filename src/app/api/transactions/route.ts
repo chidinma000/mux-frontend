@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getApiBaseUrl, getApiKey } from "@/lib/api/config";
+import { getApiBaseUrl, getUpstreamAuthHeaders } from "@/lib/api/config";
 import { mockTransactions } from "@/mock-data/transactions";
 import type { Transaction, TransactionNetwork } from "@/types/transaction";
 import { isValidStellarAddress } from "@/utils/addressValidation";

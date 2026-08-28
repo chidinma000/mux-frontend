@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getApiBaseUrl, getApiKey } from "@/lib/api/config";
+import { getApiBaseUrl, getUpstreamAuthHeaders } from "@/lib/api/config";
 import { dummyWallets } from "@/mock-data/wallets";
 
 const VALID_ACCESS_TOKEN = "mock-access-token";
@@ -24,14 +24,13 @@ export async function GET(request: Request) {
 
 	if (backendUrl) {
 		try {
-			const apiKey = getApiKey();
 			const upstream = await fetch(
 				`${backendUrl}/wallets?${searchParams.toString()}`,
 				{
 					headers: {
 						"content-type": "application/json",
 						authorization,
-						...(apiKey ? { "x-api-key": apiKey } : {}),
+						...getUpstreamAuthHeaders(),
 					},
 					cache: "no-store",
 				},

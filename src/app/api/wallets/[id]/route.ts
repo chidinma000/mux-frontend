@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getApiBaseUrl, getApiKey } from "@/lib/api/config";
+import { getApiBaseUrl, getUpstreamAuthHeaders } from "@/lib/api/config";
 import { dummyWallets } from "@/mock-data/wallets";
 
 type RouteContext = {
@@ -13,11 +13,10 @@ type RouteContext = {
 };
 
 function backendHeaders(request: Request) {
-	const apiKey = getApiKey();
 	const authorization = request.headers.get("authorization");
 	return {
 		"content-type": "application/json",
-		...(apiKey ? { "x-api-key": apiKey } : {}),
+		...getUpstreamAuthHeaders(),
 		...(authorization ? { authorization } : {}),
 	};
 }
@@ -120,7 +119,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 		return NextResponse.json({ error: "not_found" }, { status: 404 });
 	}
 
-	const hasArchived = typeof body === "object" && body !== null && "archived" in body;
+	const hasArchived =
+		typeof body === "object" && body !== null && "archived" in body;
 	if (hasArchived) {
 		const archived = (body as { archived: unknown }).archived;
 		if (typeof archived !== "boolean") {
