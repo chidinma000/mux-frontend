@@ -50,3 +50,7 @@ export function getUpstreamAuthHeaders(): Record<string, string> {
 export function isMockFallbackAllowed(): boolean {
 	return getEnv().NODE_ENV !== "production";
 }
+
+export function getServerApiKey(): string | undefined {
+	return getEnv().MUX_API_KEY;
+}
