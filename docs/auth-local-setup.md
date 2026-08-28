@@ -10,19 +10,35 @@ or replace the auth layer when a real backend is available.
 
 ## Overview
 
-The Mux Protocol frontend uses a **client-side session** model:
+The Mux Protocol frontend uses a **hybrid session** model:
 
 | Layer | Mechanism |
 |---|---|
-| Session storage | `sessionStorage` (key: `mux_auth_user`) |
-| Route protection (server) | Next.js middleware reads `mux_auth_session` cookie |
+| Session storage (client rehydration) | `sessionStorage` (key: `mux_auth_user`) |
+| Server-verified session (backend mode) | HttpOnly `mux_auth_token` cookie, set by `/api/auth/login` from the backend login response, verified on every protected request via `GET {backend}/auth/session` |
+| Route protection (server) | Next.js middleware — see `src/lib/auth/routeAccess.ts` |
 | Route protection (client) | `useSessionGuard` hook redirects unauthenticated users |
 | Auth state | React context (`AuthContext`) — `isLoading`, `isAuthenticated`, `user` |
 
-There is **no backend auth server** in the current scaffold. The login page
-calls a placeholder `authenticateUser` function that accepts any valid
-credentials and returns a mock user. Replace this with a real API call when
-the backend endpoint is ready.
+### Backend mode vs mock mode (#621)
+
+- **Backend configured** (`NEXT_PUBLIC_API_URL` / aliases set): a protected
+  route requires the HttpOnly `mux_auth_token` cookie **and** a live
+  `GET {backend}/auth/session` check confirming it is still valid. The
+  client-set `mux_auth_session` marker cookie is **not** trusted on its own —
+  this closes the "anyone can forge `mux_auth_session=1`" gap. `/api/auth/login`
+  proxies credentials to `{backend}/auth/login` and, on success, stores the
+  backend-issued token in the `mux_auth_token` cookie. `signOut()` calls
+  `POST /api/auth/logout`, which clears the cookie and best-effort notifies
+  `{backend}/auth/logout`.
+- **Mock mode** (no backend, non-production only): `/api/auth/login` accepts
+  any well-formed credentials and returns a mock user; the middleware accepts
+  the `mux_auth_session` marker cookie so `pnpm dev` / CI work without a live
+  auth server. In a **production** build with no backend, `/api/auth/login`
+  returns `503` — there is no mock sign-in in production.
+
+Full SSO / OAuth (Clerk, Better Auth, …) is a later change; this model is
+provider-agnostic and does not add any SaaS dependency.
 
 ---
 
@@ -212,14 +228,22 @@ no changes.
 
 ## Environment Variables
 
-No environment variables are required for local development with the stub
-authenticator. When integrating a real backend, add the following to
-`.env.local`:
+No environment variables are required for local development in mock mode.
+To run against a real backend (which also enables server-verified sessions,
+#621), set the API base URL in `.env.local`:
 
 ```env
-# Base URL for the auth API (used by authenticateUser)
-NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
+# Base URL for the Mux backend API. When set, /api/auth/login proxies to
+# {NEXT_PUBLIC_API_URL}/auth/login and the middleware verifies sessions via
+# {NEXT_PUBLIC_API_URL}/auth/session on every protected request.
+NEXT_PUBLIC_API_URL=http://localhost:4000
 ```
+
+The backend is expected to expose `POST /auth/login` (returning a user plus
+an opaque session `token` / `accessToken` / `sessionToken`),
+`GET /auth/session` (200 when the token is valid), and
+`POST /auth/logout`. No custody secrets are ever placed in `NEXT_PUBLIC_*`
+or `localStorage`; the session token lives only in an HttpOnly cookie.
 
 ---
 

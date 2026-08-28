@@ -1,21 +1,26 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { getApiBaseUrl } from "@/lib/api/config";
+import {
+	evaluateAccess,
+	LOGIN_PATH,
+	SESSION_MARKER_COOKIE,
+	SESSION_TOKEN_COOKIE,
+	verifySessionToken,
+} from "@/lib/auth/routeAccess";
 
 /**
- * Protected route prefixes.
- * Any request whose pathname starts with one of these values requires
- * the user to be authenticated (indicated by the presence of the
- * `mux_auth_session` cookie set during sign-in).
+ * Server-side route protection for protected prefixes (e.g. `/dashboard`).
  *
- * CSRF / Cookie Security:
- *   The `mux_auth_session` cookie is set with `SameSite=Lax` so the
- *   browser will not attach it to cross-site sub-requests (POST from
- *   an external origin).  Combined with the path-only check below,
- *   this provides a strong CSRF defence while still allowing top-level
- *   navigations (e.g. a bookmarked dashboard link) to pass through.
+ * Auth model (#621): provider-agnostic, server-verified sessions.
  *
- *   In production this cookie should also carry the `Secure` flag
- *   (set via a server-side `Set-Cookie` header in the login route).
+ *  - With a backend configured (`NEXT_PUBLIC_API_URL` / aliases): a protected
+ *    route requires the HttpOnly `mux_auth_token` cookie (set by
+ *    `/api/auth/login` from the backend's login response) AND a live
+ *    `GET {backend}/auth/session` check confirming it is still valid. The
+ *    client-set `mux_auth_session` marker cookie is NOT trusted on its own.
+ *  - Without a backend (local dev / CI against in-repo mocks): the marker
+ *    cookie is accepted so `pnpm dev` works without a live auth server.
  *
  * See docs/auth-local-setup.md for the full auth flow documentation.
  *
@@ -37,24 +42,31 @@ const LOGIN_PATH = "/login";
 export function middleware(request: NextRequest) {
 	const { pathname } = request.nextUrl;
 
-	const isProtected = PROTECTED_PREFIXES.some((prefix) =>
-		pathname.startsWith(prefix),
-	);
+	const decision = await evaluateAccess({
+		pathname,
+		token: request.cookies.get(SESSION_TOKEN_COOKIE)?.value,
+		marker: request.cookies.get(SESSION_MARKER_COOKIE)?.value,
+		backendUrl: getApiBaseUrl(),
+		verifyToken: verifySessionToken,
+	});
 
-	if (!isProtected) {
+	if (decision.allow) {
 		return NextResponse.next();
 	}
 
-	const session = request.cookies.get("mux_auth_session");
+	const loginUrl = request.nextUrl.clone();
+	loginUrl.pathname = LOGIN_PATH;
+	loginUrl.searchParams.set("callbackUrl", pathname);
+	const redirect = NextResponse.redirect(loginUrl);
 
-	if (!session?.value) {
-		const loginUrl = request.nextUrl.clone();
-		loginUrl.pathname = LOGIN_PATH;
-		loginUrl.searchParams.set("callbackUrl", pathname);
-		return NextResponse.redirect(loginUrl);
+	// A rejected token is stale/forged — clear both cookies so the browser
+	// stops replaying it on every request.
+	if (decision.reason === "invalid-token") {
+		redirect.cookies.delete(SESSION_TOKEN_COOKIE);
+		redirect.cookies.delete(SESSION_MARKER_COOKIE);
 	}
 
-	return NextResponse.next();
+	return redirect;
 }
 
 export const config = {

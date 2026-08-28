@@ -51,7 +51,12 @@ export async function POST(request: Request) {
 				return NextResponse.json(data, { status: upstream.status });
 			}
 
-			return NextResponse.json(data, { status: 200 });
+			const response = NextResponse.json(data, { status: 200 });
+			const token = extractSessionToken(data);
+			if (token) {
+				withSessionCookie(response, token);
+			}
+			return response;
 		} catch {
 			return NextResponse.json(
 				{ error: "Unable to reach authentication server" },
@@ -73,6 +78,17 @@ export async function POST(request: Request) {
 
 	// --- Mock fallback (no NEXT_PUBLIC_API_URL set, non-production only) ---
 	// Accepts any well-formed credentials; used for local dev / CI.
+	if (!canUseMockFallback()) {
+		return NextResponse.json(
+			{
+				error:
+					"Authentication backend is not configured. Set NEXT_PUBLIC_API_URL — " +
+					"mock sign-in is not available in production.",
+			},
+			{ status: 503 },
+		);
+	}
+
 	const namePart = email.split("@")[0] ?? "User";
 	const name = namePart
 		.split(/[._-]/)

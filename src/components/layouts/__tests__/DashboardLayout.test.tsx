@@ -18,6 +18,7 @@ import { DashboardLayout } from "../DashboardLayout";
 
 vi.mock("next/navigation", () => ({
 	usePathname: () => "/dashboard",
+	useRouter: () => ({ replace: vi.fn(), push: vi.fn(), prefetch: vi.fn() }),
 }));
 
 vi.mock("@/context/AuthContext", async (importOriginal) => {
@@ -33,6 +34,17 @@ vi.mock("@/context/NetworkContext", async (importOriginal) => {
 
 vi.mock("@/hooks/useDarkMode", () => ({
 	useDarkMode: () => ({ isDark: false, toggle: vi.fn() }),
+}));
+
+vi.mock("@/hooks/useNotifications", () => ({
+	useNotifications: () => ({
+		notifications: [],
+		unreadCount: 0,
+		loading: false,
+		error: null,
+		refetch: vi.fn(),
+		markAllRead: vi.fn(),
+	}),
 }));
 
 // ---------------------------------------------------------------------------
