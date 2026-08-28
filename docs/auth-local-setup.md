@@ -128,9 +128,17 @@ signIn(user, 4 * 60 * 60 * 1000); // 4-hour session
 ```
 
 What `signIn` does:
-1. Writes a `SessionRecord` (user + `expiresAt`) to `sessionStorage`.
-2. Sets the `mux_auth_session=1` cookie (read by Next.js middleware).
+1. Writes a `SessionRecord` (user + `expiresAt`) to `sessionStorage` (client
+   UI state only).
+2. Writes a non-`HttpOnly` `mux_auth_session=1` marker cookie — used only by
+   the middleware's non-production presence-check fallback.
 3. Updates `user` state in `AuthContext` → `isAuthenticated` becomes `true`.
+
+The authoritative session token — the `HttpOnly` `mux_auth_session` cookie
+the middleware verifies in production — is set by `POST /api/auth/login`
+server-side, not by `signIn`. The browser keeps the `HttpOnly` value; the
+client-side marker write is ignored when an `HttpOnly` cookie of the same
+name already exists.
 
 ### Sign out (`signOut`)
 
@@ -141,8 +149,10 @@ signOut();
 
 What `signOut` does:
 1. Removes the `mux_auth_user` key from `sessionStorage`.
-2. Clears the `mux_auth_session` cookie (`max-age=0`).
-3. Sets `user` to `null` → `isAuthenticated` becomes `false`.
+2. Clears the client-side marker cookie (`max-age=0`).
+3. Fires `POST /api/auth/logout` (fire-and-forget) so the server clears the
+   `HttpOnly` `mux_auth_session` cookie — JS cannot delete it directly.
+4. Sets `user` to `null` → `isAuthenticated` becomes `false`.
 
 ### Session rehydration
 
@@ -180,10 +190,14 @@ fake analytics in a production build.
 Add new protected route prefixes to this array **and** to the `config.matcher`
 list at the bottom of `src/middleware.ts` as the app grows.
 
-### Client-side (hook)
+`DashboardLayout` wraps its children in `AuthGuard` for the real
+`/dashboard/*` tree (`requireAuth` defaults to `true`; the demo tree passes
+`requireAuth={false}`). `AuthGuard` shows a skeleton while the session
+rehydrates and redirects to `/login` if there is no in-memory session.
 
-Use `useSessionGuard()` at the top of any protected page or layout to handle
-the case where the middleware cookie passes but the in-memory session is stale:
+`useSessionGuard()` can also be used at the top of any protected page to
+handle the case where the middleware cookie passes but the in-memory session
+is stale:
 
 ```ts
 "use client";
@@ -254,6 +268,12 @@ Tests for the login page and auth context live in:
 ```
 src/app/login/__tests__/LoginPage.test.tsx
 src/context/__tests__/AuthContext.test.ts
+src/lib/auth/__tests__/sessionToken.test.ts   # JWT sign/verify (#622)
+src/__tests__/middleware.test.ts               # route protection (#622)
+src/app/api/auth/login/__tests__/route.test.ts # sets the session cookie
+src/app/api/auth/logout/route.test.ts          # clears the session cookie
+src/components/layouts/__tests__/AuthGuard.test.tsx
+src/components/layouts/__tests__/DashboardLayout.test.tsx  # AuthGuard wiring (#623)
 ```
 
 Run tests with:

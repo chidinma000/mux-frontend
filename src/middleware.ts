@@ -32,14 +32,20 @@ import {
  */
 const PROTECTED_PREFIXES = ["/dashboard", "/demo/dashboard"];
 
-/**
- * The path users are redirected to when they are not authenticated.
- * A `callbackUrl` query param is appended so the login page can
- * redirect back after a successful sign-in.
- */
+/** Path unauthenticated users are redirected to. */
 const LOGIN_PATH = "/login";
 
-export function middleware(request: NextRequest) {
+/** Cookie name — must match `SESSION_COOKIE_NAME` in AuthContext. */
+const SESSION_COOKIE_NAME = "mux_auth_session";
+
+function redirectToLogin(request: NextRequest) {
+	const loginUrl = request.nextUrl.clone();
+	loginUrl.pathname = LOGIN_PATH;
+	loginUrl.searchParams.set("callbackUrl", request.nextUrl.pathname);
+	return NextResponse.redirect(loginUrl);
+}
+
+export async function middleware(request: NextRequest) {
 	const { pathname } = request.nextUrl;
 
 	const decision = await evaluateAccess({

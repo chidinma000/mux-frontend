@@ -95,8 +95,8 @@ export async function POST(request: Request) {
 		.map((s) => s.charAt(0).toUpperCase() + s.slice(1))
 		.join(" ");
 
-	return NextResponse.json(
-		{ user: { name, email, role: "developer" } },
-		{ status: 200 },
-	);
+	const user = { name, email, role: "developer" };
+	const response = NextResponse.json({ user }, { status: 200 });
+	await attachSessionCookie(response, { user });
+	return response;
 }
