@@ -2,6 +2,18 @@ import { NextResponse } from "next/server";
 import { getApiBaseUrl, getUpstreamAuthHeaders } from "@/lib/api/config";
 import { dummyWallets } from "@/mock-data/wallets";
 
+/** 503 returned instead of mock data when no backend is configured in production. */
+function backendUnavailableResponse() {
+	return NextResponse.json(
+		{
+			error: "backend_unavailable",
+			message:
+				"No wallets backend is configured for this production deployment. Set NEXT_PUBLIC_API_URL.",
+		},
+		{ status: 503 },
+	);
+}
+
 type RouteContext = {
 	params:
 		| {
@@ -58,7 +70,11 @@ export async function GET(request: Request, { params }: RouteContext) {
 		}
 	}
 
-	// --- Mock fallback (no NEXT_PUBLIC_API_URL set) ---
+	if (!isMockFallbackAllowed()) {
+		return backendUnavailableResponse();
+	}
+
+	// --- Mock fallback (no NEXT_PUBLIC_API_URL set, non-production only) ---
 	const wallet = dummyWallets.find((candidate) => candidate.id === walletId);
 
 	if (!wallet) {
@@ -113,7 +129,11 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 		}
 	}
 
-	// --- Mock fallback (no NEXT_PUBLIC_API_URL set) ---
+	if (!isMockFallbackAllowed()) {
+		return backendUnavailableResponse();
+	}
+
+	// --- Mock fallback (no NEXT_PUBLIC_API_URL set, non-production only) ---
 	const wallet = dummyWallets.find((candidate) => candidate.id === walletId);
 	if (!wallet) {
 		return NextResponse.json({ error: "not_found" }, { status: 404 });
