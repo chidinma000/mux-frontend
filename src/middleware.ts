@@ -22,9 +22,24 @@ import {
  *  - Without a backend (local dev / CI against in-repo mocks): the marker
  *    cookie is accepted so `pnpm dev` works without a live auth server.
  *
- * See docs/auth-local-setup.md for the full flow.
+ * See docs/auth-local-setup.md for the full auth flow documentation.
+ *
+ * `/demo/dashboard` is the relocated dashboard shell. It renders the same
+ * full UI as `/dashboard` (sidebar, wallet tables, analytics) sourced from
+ * local mock data, so it must sit behind the same auth gate — otherwise the
+ * developer console is publicly reachable with mock wallets and fake
+ * analytics in production builds.
  */
-export async function middleware(request: NextRequest) {
+const PROTECTED_PREFIXES = ["/dashboard", "/demo/dashboard"];
+
+/**
+ * The path users are redirected to when they are not authenticated.
+ * A `callbackUrl` query param is appended so the login page can
+ * redirect back after a successful sign-in.
+ */
+const LOGIN_PATH = "/login";
+
+export function middleware(request: NextRequest) {
 	const { pathname } = request.nextUrl;
 
 	const decision = await evaluateAccess({
@@ -56,8 +71,13 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
 	/*
-	 * Match all routes under /dashboard.
+	 * Match all routes under /dashboard and its /demo/dashboard mirror.
 	 * Exclude Next.js internals and static assets.
 	 */
-	matcher: ["/dashboard", "/dashboard/:path*"],
+	matcher: [
+		"/dashboard",
+		"/dashboard/:path*",
+		"/demo/dashboard",
+		"/demo/dashboard/:path*",
+	],
 };

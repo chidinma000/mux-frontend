@@ -1,49 +1,5 @@
 import { NextResponse } from "next/server";
-import { getApiBaseUrl } from "@/lib/api/config";
-import { canUseMockFallback } from "@/lib/api/runtimeMode";
-import { SESSION_TOKEN_COOKIE } from "@/lib/auth/routeAccess";
-
-/** Default session-token cookie lifetime: 8 hours (matches AuthContext TTL). */
-const TOKEN_COOKIE_MAX_AGE = 8 * 60 * 60;
-
-/**
- * Extracts an opaque session token from a backend login response, tolerating
- * the common field names used by Better Auth / Clerk / custom backends.
- */
-function extractSessionToken(data: unknown): string | undefined {
-	if (!data || typeof data !== "object") return undefined;
-	const d = data as Record<string, unknown>;
-	const candidate =
-		d.token ??
-		d.accessToken ??
-		d.sessionToken ??
-		(typeof d.session === "object" && d.session !== null
-			? (d.session as Record<string, unknown>).token
-			: undefined);
-	return typeof candidate === "string" && candidate.length > 0
-		? candidate
-		: undefined;
-}
-
-/**
- * Attaches the HttpOnly, server-verified session-token cookie (#621) to a
- * login response. The middleware confirms this token against the backend on
- * every protected request, so a forged marker cookie alone no longer grants
- * access. HttpOnly keeps it out of `document.cookie` / JS.
- */
-function withSessionCookie(
-	response: NextResponse,
-	token: string,
-): NextResponse {
-	response.cookies.set(SESSION_TOKEN_COOKIE, token, {
-		httpOnly: true,
-		sameSite: "lax",
-		path: "/",
-		secure: process.env.NODE_ENV === "production",
-		maxAge: TOKEN_COOKIE_MAX_AGE,
-	});
-	return response;
-}
+import { getApiBaseUrl, getUpstreamAuthHeaders } from "@/lib/api/config";
 
 /**
  * POST /api/auth/login
@@ -51,6 +7,10 @@ function withSessionCookie(
  * Proxies login credentials to the configured backend API
  * (NEXT_PUBLIC_API_URL or legacy aliases). If no backend URL is set, falls back to a mock
  * response so local development works without a running API server.
+ *
+ * The mock fallback is disabled in production builds (`NODE_ENV=production`)
+ * — see `isMockFallbackAllowed()` — so a misconfigured deployment fails
+ * loudly instead of accepting any credentials.
  */
 export async function POST(request: Request) {
 	let body: Record<string, unknown>;
@@ -78,7 +38,10 @@ export async function POST(request: Request) {
 		try {
 			const upstream = await fetch(`${backendUrl}/auth/login`, {
 				method: "POST",
-				headers: { "content-type": "application/json" },
+				headers: {
+					"content-type": "application/json",
+					...getUpstreamAuthHeaders(),
+				},
 				body: JSON.stringify({ email, password }),
 			});
 
@@ -102,7 +65,18 @@ export async function POST(request: Request) {
 		}
 	}
 
-	// --- Mock fallback (local dev / CI only, never in production) ---
+	if (!isMockFallbackAllowed()) {
+		return NextResponse.json(
+			{
+				error: "backend_unavailable",
+				message:
+					"No auth backend is configured for this production deployment. Set NEXT_PUBLIC_API_URL.",
+			},
+			{ status: 503 },
+		);
+	}
+
+	// --- Mock fallback (no NEXT_PUBLIC_API_URL set, non-production only) ---
 	// Accepts any well-formed credentials; used for local dev / CI.
 	if (!canUseMockFallback()) {
 		return NextResponse.json(

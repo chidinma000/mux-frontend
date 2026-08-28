@@ -163,23 +163,22 @@ On every page load, `AuthProvider` runs a `useEffect` that:
 
 ### Server-side (middleware)
 
-`src/middleware.ts` delegates to `evaluateAccess()` in
-`src/lib/auth/routeAccess.ts` for every request to a protected prefix
-(e.g. `/dashboard`):
-
-- backend mode → requires a valid, backend-verified `mux_auth_token`;
-- mock mode → requires the `mux_auth_session` marker cookie.
-
-If access is denied the user is redirected to
-`/login?callbackUrl=<original-path>`; a rejected token also clears both
-cookies on the redirect.
+`src/middleware.ts` checks for the `mux_auth_session` cookie on every request
+to protected prefixes. If the cookie is absent, the user is redirected to
+`/login?callbackUrl=<original-path>`.
 
 ```ts
-// src/lib/auth/routeAccess.ts
-export const PROTECTED_PREFIXES = ["/dashboard"];
+// src/middleware.ts
+const PROTECTED_PREFIXES = ["/dashboard", "/demo/dashboard"];
 ```
 
-Add new protected route prefixes to this array as the app grows.
+`/demo/dashboard` renders the same full dashboard shell as `/dashboard`
+(sourced from local mock data), so it sits behind the same gate — the
+developer console must never be publicly reachable with mock wallets and
+fake analytics in a production build.
+
+Add new protected route prefixes to this array **and** to the `config.matcher`
+list at the bottom of `src/middleware.ts` as the app grows.
 
 ### Client-side (hook)
 
