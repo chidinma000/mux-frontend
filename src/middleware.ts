@@ -10,7 +10,8 @@ import {
 } from "@/lib/auth/routeAccess";
 
 /**
- * Server-side route protection for protected prefixes (e.g. `/dashboard`).
+ * Server-side route protection for protected prefixes (`/dashboard` and its
+ * `/demo/dashboard` mirror).
  *
  * Auth model (#621): provider-agnostic, server-verified sessions.
  *
@@ -28,7 +29,9 @@ import {
  * full UI as `/dashboard` (sidebar, wallet tables, analytics) sourced from
  * local mock data, so it must sit behind the same auth gate — otherwise the
  * developer console is publicly reachable with mock wallets and fake
- * analytics in production builds.
+ * analytics in production builds. Keep this list in sync with
+ * `PROTECTED_PREFIXES` in `src/lib/auth/routeAccess.ts` and `config.matcher`
+ * below.
  */
 const PROTECTED_PREFIXES = ["/dashboard", "/demo/dashboard", "/recovery"];
 
