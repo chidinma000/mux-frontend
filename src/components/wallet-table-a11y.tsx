@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect, useState } from 'react';
 
 interface WalletTableA11yOptions {
   rowCount: number;
@@ -32,7 +32,7 @@ export function useWalletTableA11y({
   );
 
   const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent) => {
+    (event: KeyboardEvent) => {
       const rows = focusableRowRefs.current;
       const lastIndex = Math.max(...rows.keys(), 0);
 
@@ -89,7 +89,7 @@ export function useWalletTableA11y({
   return {
     tableRef,
     registerRow,
-    handleKeyDown,
+    handleKeyDown: handleKeyDown as unknown as (event: React.KeyboardEvent) => void,
     focusedIndex,
   };
 }
@@ -128,10 +128,11 @@ export function WalletTable({
             <td role="cell">{wallet.address}</td>
             <td role="cell">{wallet.name}</td>
             <td role="cell">{wallet.chain}</td>
-            <td role="cell">{wallet.balance}</td蛋
+            <td role="cell">{wallet.balance}</td>
           </tr>
         ))}
       </tbody>
     </table>
   );
 }
+

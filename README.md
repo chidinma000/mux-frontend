@@ -191,3 +191,28 @@ the keyboard:
 See [`docs/security-ux-guards.md`](docs/security-ux-guards.md) for the
 security/UX invariants and `tests/e2e/` for the end-to-end coverage of the
 spending-limits flow.
+
+## UI component conventions
+
+All UI components follow the typed-entrypoint, fail-closed, deny-by-default
+conventions documented in [`docs/ui-component-conventions.md`](docs/ui-component-conventions.md).
+Key rules: typed props, stable error codes, correlation ids, accessible markup,
+no secrets in props/logs/copy, and a Storybook story for every visible surface.
+
+## Session timeout warning
+
+The app renders a **session timeout warning** when the authenticated session is
+within 2 minutes of expiry. The warning is fail-closed: it never silently keeps
+the user signed in if the extend call fails, and it never leaks raw tokens or
+keys in the UI or telemetry. See `src/components/SessionTimeoutWarning.tsx` and
+`tests/e2e/session-timeout.spec.ts`.
+
+## Team invite/remove RBAC
+
+The Settings **team management** page (`/dashboard/settings/team`) lets admins
+add and remove team members. It is deny-by-default: only `admin`-role sessions
+see the invite form and remove buttons; `developer` sessions get a read-only
+view. The API route (`/api/team`) enforces the same policy server-side so the
+UI cannot be bypassed. See `src/components/TeamManagement.tsx`,
+`src/app/api/team/route.ts`, `docs/team-access-and-audit-log.md`, and
+`tests/e2e/team-management.spec.ts`.

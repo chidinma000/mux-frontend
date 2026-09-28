@@ -1,8 +1,6 @@
 'use client';
 
 import React from 'react';
-import { Box, Typography, Button, Skeleton } from '@mui/material';
-import { styled } from '@mui/system';
 
 interface EmptyStateProps {
   title: string;
@@ -10,26 +8,7 @@ interface EmptyStateProps {
   icon?: React.ReactNode;
   actionLabel?: string;
   onAction?: () => void;
-  variant?: 'default' | 'compact' | 'detailed';
 }
-
-const EmptyContainer = styled(Box)(({ variant }) => ({
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: variant === 'compact' ? '24px' : variant === 'detailed' ? '48px' : '32px',
-  minHeight: variant === 'compact' ? '120px' : '200px',
-  borderRadius: '8px',
-  backgroundColor: 'rgba(0, 0, 0, 0.04)',
-  border: '1px dashed rgba(0, 0, 0, 0.12)',
-}));
-
-const EmptyIcon = styled(Box)(({ theme }) => ({
-  fontSize: '48px',
-  marginBottom: '16px',
-  opacity: 0.5,
-}));
 
 export function EmptyState({
   title,
@@ -37,27 +16,22 @@ export function EmptyState({
   icon,
   actionLabel,
   onAction,
-  variant = 'default',
 }: EmptyStateProps) {
   return (
-    <EmptyContainer variant={variant}>
-      {icon && <EmptyIcon>{icon}</EmptyIcon>}
-      <Typography variant="h6" gutterBottom sx={{ color: 'text.secondary' }}>
-        {title}
-      </Typography>
-      <Typography variant="body2" sx={{ color: 'text.disabled', textAlign: 'center', maxWidth: '400px' }}>
-        {description}
-      </Typography>
+    <div className="flex flex-col items-center justify-center p-8 min-h-[200px] rounded-lg bg-black/4 border border-dashed border-black/12">
+      {icon && <div className="text-5xl mb-4 opacity-50">{icon}</div>}
+      <h2 className="text-base font-semibold text-gray-600 mb-2">{title}</h2>
+      <p className="text-sm text-gray-400 text-center max-w-[400px]">{description}</p>
       {actionLabel && onAction && (
-        <Button
-          variant="outlined"
+        <button
+          type="button"
           onClick={onAction}
-          sx={{ mt: '24px' }}
+          className="mt-6 px-4 py-2 border border-gray-400 rounded text-sm hover:bg-gray-100 transition-colors"
         >
           {actionLabel}
-        </Button>
+        </button>
       )}
-    </EmptyContainer>
+    </div>
   );
 }
 
@@ -67,7 +41,6 @@ export const WalletEmptyState: React.FC = () => (
     description="Connect a wallet to view your accounts and transaction history."
     icon={<span>👛</span>}
     actionLabel="Connect Wallet"
-    variant="detailed"
   />
 );
 
@@ -86,25 +59,5 @@ export const NetworkEmptyState: React.FC = () => (
     description="Configure a network to start interacting with the blockchain."
     icon={<span>🌐</span>}
     actionLabel="Add Network"
-    variant="compact"
   />
 );
-
-export const AssetsEmptyState: React.FC = () => (
-  <EmptyState
-    title="No Assets"
-    description="You don't have any assets yet. Add tokens to get started."
-    icon={<span>💎</span>}
-    actionLabel="Add Asset"
-  />
-);
-
-export function LoadingSkeleton({ variant = 'default' }: { variant?: string }) {
-  return (
-    <EmptyContainer variant={variant as any}>
-      <Skeleton variant="text" width="60%" />
-      <Skeleton variant="text" width="40%" sx={{ mt: '16px' }} />
-      <Skeleton variant="rectangular" width="100%" height="120px" sx={{ mt: '24px' }} />
-    </EmptyContainer>
-  );
-}

@@ -66,6 +66,12 @@ in a `NEXT_PUBLIC_*` variable.
   `http://localhost:3000`.
 - **`NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID`** — only relevant if
   WalletConnect-based wallet flows are enabled.
+- **`NEXT_PUBLIC_STELLAR_NETWORK`** — the Stellar network for the receive
+  QR and network badge. Accepted values: `testnet` | `mainnet`. Fail-closed:
+  if unset or set to an unknown value the receive view refuses to render a
+  QR/badge and surfaces an actionable error instead of silently defaulting to
+  mainnet. This prevents a user from sending funds to the wrong network. See
+  `README.md` and `docs/security-ux-guards.md` for the full guard contract.
 
 There is intentionally no client-visible Mux API key. A project API key
 is a real credential, and anything under `NEXT_PUBLIC_*` is inlined into

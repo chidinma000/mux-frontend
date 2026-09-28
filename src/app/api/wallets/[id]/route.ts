@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { NextRequest, NextResponse } from 'next/server';
-import { randomUUID } from 'crypto';
 import { z } from 'zod';
 
 /**
@@ -469,8 +467,8 @@ export async function GET(
 
 interface AuthContext {
   subject: string;
-
-  );
+  role: ArchiveRestoreRole;
+  walletId: string;
 }
 
 /**
@@ -808,46 +806,3 @@ export async function PATCH(
     );
   }
 }
-
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } },
-) {
-  const correlationId = req.headers.get('x-correlation-id') ?? randomUUID();
-  const auth = resolveAuth(req);
-  if (!auth) {
-    return errorResponse(401, WalletSettingsErrorCode.UNAUTHORIZED, correlationId, 'Authentication required.');
-  }
-
-  try {
-    const record = await settingsStore.get(params.id);
-    if (!record) {
-      return errorResponse(404, WalletSettingsErrorCode.NOT_FOUND, correlationId, 'Wallet not found.');
-    }
-    return NextResponse.json({ data: record }, { headers: { 'x-correlation-id': correlationId } });
-  } catch {
-    return errorResponse(
-      503,
-      WalletSettingsErrorCode.DEPENDENCY_UNAVAILABLE,
-      correlationId,
-      'Settings store unavailable.',
-    );
-  }
-}
-
-/**
- * Onboarding: first key + wallet.
- *
- * Deny-by-default authz (owner only for provisioning), idempotent on the
- * `Idempotency-Key` header, and fail-closed on dependency outage.
- */
-async function onboardFirstKey(
-  _walletId: string,
-  _idempotencyKey: string,
-  _label: string | undefined,
-): Promise<OnboardResult> {
-  // Placeholder: real implementation provisions the first key + invisible
-  // wallet via the wallet service, keyed by idempotencyKey for replay safety.
-  throw new Error('wallet service not configured');
-}
-

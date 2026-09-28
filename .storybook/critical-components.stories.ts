@@ -1,7 +1,7 @@
-import { Meta, StoryObj } from '@storybook/react';
-import { ComponentStory } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
+import React from 'react';
 
-interface CriticalComponent {
+interface CriticalComponentProps {
   id: string;
   name: string;
   status: 'critical' | 'warning' | 'ok';
@@ -9,22 +9,36 @@ interface CriticalComponent {
   type: 'wallet' | 'transaction' | 'auth' | 'payment';
 }
 
-const CriticalComponentStories: Meta<CriticalComponent> = {
+function CriticalComponentDisplay(props: CriticalComponentProps) {
+  const isCritical = props.status === 'critical';
+  return (
+    <div className={`p-4 border rounded-lg ${isCritical ? 'border-red-500' : 'border-yellow-500'}`}>
+      <span className={isCritical ? 'text-red-500' : 'text-yellow-500'}>
+        {isCritical ? '🔴' : '🟡'} {props.name}
+      </span>
+      <span className="text-gray-400 ml-2">{props.type}</span>
+    </div>
+  );
+}
+
+const meta: Meta<CriticalComponentProps> = {
   title: 'Critical/CriticalComponents',
-  component: () => null,
+  component: CriticalComponentDisplay,
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
     docs: {
       description: {
-        component:
-          'CI-critical component stories for automated testing pipeline',
+        component: 'CI-critical component stories for automated testing pipeline',
       },
     },
   },
 };
 
-export const WalletComponent: ComponentStory<CriticalComponent> = {
+export default meta;
+type Story = StoryObj<CriticalComponentProps>;
+
+export const WalletComponent: Story = {
   args: {
     id: 'wallet-001',
     name: 'ConnectWallet',
@@ -32,15 +46,9 @@ export const WalletComponent: ComponentStory<CriticalComponent> = {
     lastModified: '2026-09-26',
     type: 'wallet',
   },
-  render: (args) => (
-    <div className="p-4 border border-red-500 rounded-lg">
-      <span className="text-red-500">🔴 {args.name}</span>
-      <span className="text-gray-400 ml-2">{args.type}</span>
-    </div>
-  ),
 };
 
-export const TransactionComponent: ComponentStory<CriticalComponent> = {
+export const TransactionComponent: Story = {
   args: {
     id: 'tx-001',
     name: 'ProcessTransaction',
@@ -48,15 +56,9 @@ export const TransactionComponent: ComponentStory<CriticalComponent> = {
     lastModified: '2026-09-26',
     type: 'transaction',
   },
-  render: (args) => (
-    <div className="p-4 border border-red-500 rounded-lg">
-      <span className="text-red-500">🔴 {args.name}</span>
-      <span className="text-gray-400 ml-2">{args.type}</span>
-    </div>
-  ),
 };
 
-export const AuthComponent: ComponentStory<CriticalComponent> = {
+export const AuthComponent: Story = {
   args: {
     id: 'auth-001',
     name: 'JWTVerification',
@@ -64,15 +66,9 @@ export const AuthComponent: ComponentStory<CriticalComponent> = {
     lastModified: '2026-09-26',
     type: 'auth',
   },
-  render: (args) => (
-    <div className="p-4 border border-red-500 rounded-lg">
-      <span className="text-red-500">🔴 {args.name}</span>
-      <span className="text-gray-400 ml-2">{args.type}</span>
-    </div>
-  ),
 };
 
-export const PaymentComponent: ComponentStory<CriticalComponent> = {
+export const PaymentComponent: Story = {
   args: {
     id: 'pay-001',
     name: 'ProcessPayment',
@@ -80,12 +76,4 @@ export const PaymentComponent: ComponentStory<CriticalComponent> = {
     lastModified: '2026-09-26',
     type: 'payment',
   },
-  render: (args) => (
-    <div className="p-4 border border-yellow-500 rounded-lg">
-      <span className="text-yellow-500">🟡 {args.name}</span>
-      <span className="text-gray-400 ml-2">{args.type}</span>
-    </div>
-  ),
 };
-
-export default CriticalComponentStories;
