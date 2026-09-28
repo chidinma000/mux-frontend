@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import React from 'react';
+import { criticalComponentFixtures } from '../src/mocks/wallet-fixtures';
 
 interface CriticalComponentProps {
   id: string;
@@ -40,40 +41,28 @@ type Story = StoryObj<CriticalComponentProps>;
 
 export const WalletComponent: Story = {
   args: {
-    id: 'wallet-001',
-    name: 'ConnectWallet',
-    status: 'critical',
+    ...criticalComponentFixtures[0],
     lastModified: '2026-09-26',
-    type: 'wallet',
   },
 };
 
 export const TransactionComponent: Story = {
   args: {
-    id: 'tx-001',
-    name: 'ProcessTransaction',
-    status: 'critical',
+    ...criticalComponentFixtures[1],
     lastModified: '2026-09-26',
-    type: 'transaction',
   },
 };
 
 export const AuthComponent: Story = {
   args: {
-    id: 'auth-001',
-    name: 'JWTVerification',
-    status: 'critical',
+    ...criticalComponentFixtures[2],
     lastModified: '2026-09-26',
-    type: 'auth',
   },
 };
 
 export const PaymentComponent: Story = {
   args: {
-    id: 'pay-001',
-    name: 'ProcessPayment',
-    status: 'warning',
+    ...criticalComponentFixtures[3],
     lastModified: '2026-09-26',
-    type: 'payment',
   },
 };
