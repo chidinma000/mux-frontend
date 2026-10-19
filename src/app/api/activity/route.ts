@@ -64,7 +64,7 @@ const limiter = createFixedWindowLimiter(60, 60_000);
 export function isMockFallbackAllowedFor(
 	env: Record<string, string | undefined> = process.env,
 ): boolean {
-	return isMockFallbackAllowed(env);
+	return getBackendBaseUrl(env) === null && isMockFallbackAllowed(env);
 }
 
 function logAuditEvent(fields: {
